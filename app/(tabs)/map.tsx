@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,9 +12,7 @@ import {
   Platform,
   Linking,
 } from "react-native";
-import { router } from "expo-router";
-import { useLocalSearchParams } from "expo-router";
-
+import { router, useLocalSearchParams } from "expo-router";
 
 type Category = "AI" | "Food" | "Animals" | "Environment" | "Community";
 
@@ -25,7 +23,6 @@ type Friend = {
   place: string;
   minutesAgo: number;
   miles: number;
-  // percent positions (0..1) on the map image
   x: number;
   y: number;
 };
@@ -68,6 +65,8 @@ function pinColor(cat: Opportunity["category"]) {
 export default function MapScreen() {
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<Category>("AI");
+
+  // ✅ from Profile screen: oppId
   const { oppId } = useLocalSearchParams<{ oppId?: string }>();
 
   const [selected, setSelected] = useState<
@@ -76,11 +75,9 @@ export default function MapScreen() {
     | null
   >(null);
 
-  // highlight follows who you last clicked
   const [activeFriendId, setActiveFriendId] = useState<string>("f1");
 
   function goToUserProfile(userId: string) {
-    // Pass userId so your profile screen can show that person (optional on profile screen)
     router.push({ pathname: "/(tabs)/profile", params: { userId } });
   }
 
@@ -158,9 +155,19 @@ export default function MapScreen() {
       x: 0.84,
       y: 0.38,
     },
-    
   ];
-  
+
+  // ✅ If Profile navigated here with oppId, auto-open popup + show it even if category filter hides it
+  useEffect(() => {
+    if (!oppId) return;
+
+    const exists = opportunities.some((o) => o.id === oppId);
+    if (!exists) return;
+
+    setActiveCat("AI"); // ensure visible regardless of filter
+    setSelected({ kind: "opp", id: oppId });
+  }, [oppId]);
+
   const filteredOpps = useMemo(() => {
     const q = query.trim().toLowerCase();
     return opportunities
@@ -182,7 +189,6 @@ export default function MapScreen() {
 
   return (
     <View style={styles.page}>
-      {/* MAP MOCK */}
       <View style={styles.mapWrap}>
         <ImageBackground
           source={require("../../assets/maps/charlotte.png")}
@@ -218,7 +224,7 @@ export default function MapScreen() {
               key={f.id}
               onPress={() => {
                 setSelected({ kind: "friend", id: f.id });
-                setActiveFriendId(f.id); // ✅ sync highlight when tapping pin
+                setActiveFriendId(f.id);
               }}
               style={[
                 styles.friendPin,
@@ -230,7 +236,6 @@ export default function MapScreen() {
             </Pressable>
           ))}
 
-          {/* top overlay */}
           <View style={styles.topOverlay}>
             <Text style={styles.h1}>Find Opportunities</Text>
 
@@ -246,7 +251,6 @@ export default function MapScreen() {
             </View>
           </View>
 
-          {/* popup */}
           {selected && (
             <View style={styles.popupCard}>
               {selectedFriend ? (
@@ -286,7 +290,6 @@ export default function MapScreen() {
                   <Text style={styles.popupBtnText}>Close</Text>
                 </Pressable>
 
-                {/* ✅ Friend: View Profile */}
                 {selectedFriend && (
                   <Pressable
                     style={[styles.popupBtn, styles.popupBtnPrimary]}
@@ -298,7 +301,6 @@ export default function MapScreen() {
                   </Pressable>
                 )}
 
-                {/* ✅ Opportunity: Directions */}
                 {selectedOpp && (
                   <Pressable
                     style={[styles.popupBtn, styles.popupBtnPrimary]}
@@ -315,7 +317,6 @@ export default function MapScreen() {
         </ImageBackground>
       </View>
 
-      {/* chips */}
       <View style={styles.chipsWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {CATS.map((c) => {
@@ -335,7 +336,6 @@ export default function MapScreen() {
         </ScrollView>
       </View>
 
-      {/* lists */}
       <FlatList
         data={filteredOpps}
         keyExtractor={(x) => x.id}
@@ -350,7 +350,7 @@ export default function MapScreen() {
                   key={f.id}
                   onPress={() => {
                     setSelected({ kind: "friend", id: f.id });
-                    setActiveFriendId(f.id); // ✅ highlight moves
+                    setActiveFriendId(f.id);
                   }}
                   style={[
                     styles.friendRow,
@@ -430,7 +430,6 @@ function GridOverlay() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#F7F4EA" },
-
   mapWrap: {
     height: 360,
     margin: 16,
@@ -442,7 +441,6 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 3,
   },
-
   mapTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(247, 244, 234, 0.20)" },
 
   gridWrap: { ...StyleSheet.absoluteFillObject, opacity: 0.35 },
@@ -466,7 +464,6 @@ const styles = StyleSheet.create({
   searchIcon: { fontSize: 18, opacity: 0.55, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: "#142018" },
 
-  // pins
   pin: {
     position: "absolute",
     width: 46,
@@ -513,7 +510,6 @@ const styles = StyleSheet.create({
     borderColor: "white",
   },
 
-  // popup
   popupCard: {
     position: "absolute",
     left: 18,
@@ -548,7 +544,6 @@ const styles = StyleSheet.create({
   popupBtnPrimary: { backgroundColor: "#0A7A5A", borderColor: "#0A7A5A" },
   popupBtnText: { fontWeight: "900", color: "#0A7A5A" },
 
-  // chips
   chipsWrap: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6 },
   chip: {
     borderWidth: 2,

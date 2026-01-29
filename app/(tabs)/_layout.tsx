@@ -48,14 +48,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-          name="events"
-          options={{
-            title: "Events",
-            tabBarIcon: ({ size, color }) => (
-              <Ionicons name="calendar-outline" size={size} color={color} />
-            ),
-          }}
-        />
+        name="events"
+        options={{
+          title: "Events",
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
 
       <Tabs.Screen
         name="map"
@@ -83,7 +83,17 @@ export default function TabsLayout() {
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+
+            // Always reset to logged-in user's profile
+            const { router } = require("expo-router");
+            router.replace("/(tabs)/profile");
+          },
+        }}
       />
+
     </Tabs>
   );
 }
