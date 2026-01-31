@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
   },
 
   pillActive: {
-    backgroundColor: "#7FA68A", // sage
-    borderColor: "#7FA68A",
+    backgroundColor: "#0A7A5A", // sage
+    borderColor: "#0A7A5A",
   },
 
   pillText: {
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
 
   org: {
     marginTop: 6,
-    color: "#5E8C72", // sage
+    color: "#0A7A5A", // sage
     fontWeight: "700",
   },
 
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "#7FA68A", // sage
+    backgroundColor: "#0A7A5A", // sage
     alignItems: "center",
   },
 

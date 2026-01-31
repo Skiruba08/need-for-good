@@ -99,7 +99,7 @@ export default function FeedScreen() {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.header}>DoGood</Text>
+          <Text style={styles.header}>Need For Good</Text>
           <Text style={styles.sub}>See what people are doing in Charlotte</Text>
         </View>
 
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#7FA68A", // sage
+    backgroundColor: "#0A7A5A", // sage
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -290,8 +290,8 @@ const styles = StyleSheet.create({
   },
 
   chipActive: {
-    backgroundColor: "#7FA68A",
-    borderColor: "#7FA68A",
+    backgroundColor: "#0A7A5A",
+    borderColor: "#0A7A5A",
   },
 
   chipActiveText: {
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: "#7FA68A",
+    backgroundColor: "#0A7A5A",
   },
 
   smallBtnText: {

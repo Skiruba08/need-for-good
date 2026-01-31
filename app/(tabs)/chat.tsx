@@ -42,7 +42,7 @@ const colors = {
   forest: "#1F5B3A", // deep green
   moss: "#2E7D55",
   moss2: "#6C7F72",
-  leaf: "#B7D9C4", // pastel green
+  leaf: "##0A7A5A", // pastel green
   paper: "#FBFAF5",
   ink: "#18211B",
 };

@@ -11,6 +11,7 @@ import {
   ImageBackground,
   Platform,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 
@@ -25,6 +26,7 @@ type Friend = {
   miles: number;
   x: number;
   y: number;
+  oppId?: string;
 };
 
 type Opportunity = {
@@ -62,11 +64,17 @@ function pinColor(cat: Opportunity["category"]) {
   return "#A16207";
 }
 
+function jitterForId(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  const jx = (((hash >> 1) % 100) / 100 - 0.5) * 0.036;
+  const jy = (((hash >> 2) % 100) / 100 - 0.5) * 0.036;
+  return { jx, jy };
+}
+
 export default function MapScreen() {
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<Category>("AI");
-
-  // ✅ from Profile screen: oppId
   const { oppId } = useLocalSearchParams<{ oppId?: string }>();
 
   const [selected, setSelected] = useState<
@@ -77,94 +85,31 @@ export default function MapScreen() {
 
   const [activeFriendId, setActiveFriendId] = useState<string>("f1");
 
+  const { width } = useWindowDimensions();
+  const compactPins = width < 420;
+
   function goToUserProfile(userId: string) {
     router.push({ pathname: "/(tabs)/profile", params: { userId } });
   }
 
   const friends: Friend[] = [
-    {
-      id: "f1",
-      name: "Sarah Johnson",
-      avatar: "https://i.pravatar.cc/150?img=32",
-      place: "Animal Shelter",
-      minutesAgo: 5,
-      miles: 3.1,
-      x: 0.72,
-      y: 0.22,
-    },
-    {
-      id: "f2",
-      name: "Michael Chen",
-      avatar: "https://i.pravatar.cc/150?img=12",
-      place: "Beach Cleanup",
-      minutesAgo: 15,
-      miles: 4.5,
-      x: 0.66,
-      y: 0.45,
-    },
-    {
-      id: "f3",
-      name: "Emily Davis",
-      avatar: "https://i.pravatar.cc/150?img=47",
-      place: "Community Garden",
-      minutesAgo: 60,
-      miles: 1.8,
-      x: 0.82,
-      y: 0.18,
-    },
+    { id: "f1", name: "Sarah Johnson", avatar: "https://i.pravatar.cc/150?img=32", place: "Animal Shelter", minutesAgo: 5, miles: 3.1, x: 0.72, y: 0.22, oppId: "o2" },
+    { id: "f2", name: "Michael Chen", avatar: "https://i.pravatar.cc/150?img=12", place: "Beach Cleanup", minutesAgo: 15, miles: 4.5, x: 0.66, y: 0.45, oppId: "o4" },
+    { id: "f3", name: "Emily Davis", avatar: "https://i.pravatar.cc/150?img=47", place: "Community Garden", minutesAgo: 60, miles: 1.8, x: 0.82, y: 0.18, oppId: "o3" },
   ];
 
   const opportunities: Opportunity[] = [
-    {
-      id: "o1",
-      title: "Charlotte Food Bank",
-      subtitle: "Food sorting and distribution",
-      category: "Food",
-      miles: 2.3,
-      address: "3609 Latrobe Dr, Charlotte, NC",
-      x: 0.18,
-      y: 0.25,
-    },
-    {
-      id: "o2",
-      title: "Animal Shelter",
-      subtitle: "Dog walking and care",
-      category: "Animals",
-      miles: 3.1,
-      address: "8315 Byrum Dr, Charlotte, NC",
-      x: 0.70,
-      y: 0.28,
-    },
-    {
-      id: "o3",
-      title: "Community Garden",
-      subtitle: "Garden maintenance",
-      category: "Environment",
-      miles: 1.8,
-      address: "1234 Garden St, Charlotte, NC",
-      x: 0.44,
-      y: 0.42,
-    },
-    {
-      id: "o4",
-      title: "Beach Cleanup",
-      subtitle: "Coastal conservation",
-      category: "Environment",
-      miles: 4.5,
-      address: "5678 Beach Rd, Charlotte, NC",
-      x: 0.84,
-      y: 0.38,
-    },
+    { id: "o1", title: "Charlotte Food Bank", subtitle: "Food sorting and distribution", category: "Food", miles: 2.3, address: "3609 Latrobe Dr, Charlotte, NC", x: 0.18, y: 0.25 },
+    { id: "o2", title: "Animal Shelter", subtitle: "Dog walking and care", category: "Animals", miles: 3.1, address: "8315 Byrum Dr, Charlotte, NC", x: 0.70, y: 0.28 },
+    { id: "o3", title: "Community Garden", subtitle: "Garden maintenance", category: "Environment", miles: 1.8, address: "1234 Garden St, Charlotte, NC", x: 0.44, y: 0.42 },
+    { id: "o4", title: "Beach Cleanup", subtitle: "Coastal conservation", category: "Environment", miles: 4.5, address: "5678 Beach Rd, Charlotte, NC", x: 0.84, y: 0.38 },
   ];
 
-  // ✅ If Profile navigated here with oppId, auto-open popup + show it even if category filter hides it
   useEffect(() => {
     if (!oppId) return;
-
-    const exists = opportunities.some((o) => o.id === oppId);
-    if (!exists) return;
-
-    setActiveCat("AI"); // ensure visible regardless of filter
+    const match = opportunities.find((o) => o.id === oppId);
+    if (!match) return;
+    setActiveCat(match.category);
     setSelected({ kind: "opp", id: oppId });
   }, [oppId]);
 
@@ -181,6 +126,20 @@ export default function MapScreen() {
       );
   }, [query, activeCat]);
 
+  const mapOppPins = useMemo(() => {
+    if (activeCat === "AI") return filteredOpps.slice(0, 3);
+    return filteredOpps;
+  }, [activeCat, filteredOpps]);
+
+  const mapFriendPins = useMemo(() => {
+    if (activeCat === "AI") {
+      const sorted = [...friends].sort((a, b) => a.minutesAgo - b.minutesAgo);
+      return sorted.slice(0, 2);
+    }
+    const oppIds = new Set(filteredOpps.map((o) => o.id));
+    return friends.filter((f) => (f.oppId ? oppIds.has(f.oppId) : true));
+  }, [activeCat, filteredOpps, friends]);
+
   const selectedFriend =
     selected?.kind === "friend" ? friends.find((f) => f.id === selected.id) : null;
 
@@ -189,6 +148,27 @@ export default function MapScreen() {
 
   return (
     <View style={styles.page}>
+      {/* ✅ HEADER OUTSIDE THE MAP (pins start lower now) */}
+      <View style={styles.headerArea}>
+        <Text style={styles.h1}>Find Opportunities</Text>
+
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIcon}>⌕</Text>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search Charlotte..."
+            placeholderTextColor="#8BA39A"
+            style={styles.searchInput}
+          />
+        </View>
+
+        <Text style={styles.mapHint}>
+          {activeCat === "AI" ? "Showing featured pins" : `Showing ${activeCat} pins`}
+        </Text>
+      </View>
+
+      {/* ✅ MAP STARTS LOWER */}
       <View style={styles.mapWrap}>
         <ImageBackground
           source={require("../../assets/maps/charlotte.png")}
@@ -198,72 +178,58 @@ export default function MapScreen() {
           <View pointerEvents="none" style={styles.mapTint} />
           <GridOverlay />
 
-          {/* opportunity pins */}
-          {filteredOpps.map((o) => (
-            <Pressable
-              key={o.id}
-              onPress={() => {
-                setSelected({ kind: "opp", id: o.id });
-              }}
-              style={[
-                styles.pin,
-                {
-                  left: `${o.x * 100}%`,
-                  top: `${o.y * 100}%`,
-                  backgroundColor: pinColor(o.category),
-                },
-              ]}
-            >
-              <Text style={styles.pinIcon}>⌁</Text>
-            </Pressable>
-          ))}
+          {mapOppPins.map((o) => {
+            const { jx, jy } = jitterForId(o.id);
+            const x = Math.min(0.95, Math.max(0.05, o.x + jx));
+            const y = Math.min(0.92, Math.max(0.10, o.y + jy));
 
-          {/* friend pins */}
-          {friends.map((f) => (
-            <Pressable
-              key={f.id}
-              onPress={() => {
-                setSelected({ kind: "friend", id: f.id });
-                setActiveFriendId(f.id);
-              }}
-              style={[
-                styles.friendPin,
-                { left: `${f.x * 100}%`, top: `${f.y * 100}%` },
-              ]}
-            >
-              <Image source={{ uri: f.avatar }} style={styles.friendAvatar} />
-              <View style={styles.friendDot} />
-            </Pressable>
-          ))}
+            return (
+              <Pressable
+                key={o.id}
+                onPress={() => setSelected({ kind: "opp", id: o.id })}
+                style={[
+                  styles.pin,
+                  compactPins && styles.pinCompact,
+                  { left: `${x * 100}%`, top: `${y * 100}%`, backgroundColor: pinColor(o.category) },
+                ]}
+              >
+                <Text style={styles.pinIcon}>⌁</Text>
+              </Pressable>
+            );
+          })}
 
-          <View style={styles.topOverlay}>
-            <Text style={styles.h1}>Find Opportunities</Text>
+          {mapFriendPins.map((f) => {
+            const { jx, jy } = jitterForId(f.id);
+            const x = Math.min(0.95, Math.max(0.05, f.x + jx));
+            const y = Math.min(0.92, Math.max(0.10, f.y + jy));
 
-            <View style={styles.searchBar}>
-              <Text style={styles.searchIcon}>⌕</Text>
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search Charlotte..."
-                placeholderTextColor="#8BA39A"
-                style={styles.searchInput}
-              />
-            </View>
-          </View>
+            return (
+              <Pressable
+                key={f.id}
+                onPress={() => {
+                  setSelected({ kind: "friend", id: f.id });
+                  setActiveFriendId(f.id);
+                }}
+                style={[
+                  styles.friendPin,
+                  compactPins && styles.friendPinCompact,
+                  { left: `${x * 100}%`, top: `${y * 100}%` },
+                ]}
+              >
+                <Image source={{ uri: f.avatar }} style={styles.friendAvatar} />
+                <View style={styles.friendDot} />
+              </Pressable>
+            );
+          })}
 
           {selected && (
             <View style={styles.popupCard}>
               {selectedFriend ? (
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Image
-                    source={{ uri: selectedFriend.avatar }}
-                    style={{ width: 44, height: 44, borderRadius: 22 }}
-                  />
+                  <Image source={{ uri: selectedFriend.avatar }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                   <View style={{ marginLeft: 12, flex: 1 }}>
                     <Text style={styles.popupTitle}>{selectedFriend.name}</Text>
-                    <Text style={styles.popupTime}>
-                      {timeLabel(selectedFriend.minutesAgo)}
-                    </Text>
+                    <Text style={styles.popupTime}>{timeLabel(selectedFriend.minutesAgo)}</Text>
                     <Text style={styles.popupLabel}>Volunteered at:</Text>
                     <Text style={styles.popupBold}>{selectedFriend.place}</Text>
                   </View>
@@ -273,12 +239,7 @@ export default function MapScreen() {
                   <Text style={styles.popupTitle}>{selectedOpp.title}</Text>
                   <Text style={styles.popupSub}>{selectedOpp.subtitle}</Text>
                   <View style={{ marginTop: 10, alignSelf: "flex-start" }}>
-                    <View
-                      style={[
-                        styles.badge,
-                        { backgroundColor: pinColor(selectedOpp.category) },
-                      ]}
-                    >
+                    <View style={[styles.badge, { backgroundColor: pinColor(selectedOpp.category) }]}>
                       <Text style={styles.badgeText}>{selectedOpp.category}</Text>
                     </View>
                   </View>
@@ -295,9 +256,7 @@ export default function MapScreen() {
                     style={[styles.popupBtn, styles.popupBtnPrimary]}
                     onPress={() => goToUserProfile(selectedFriend.id)}
                   >
-                    <Text style={[styles.popupBtnText, { color: "white" }]}>
-                      View Profile
-                    </Text>
+                    <Text style={[styles.popupBtnText, { color: "white" }]}>View Profile</Text>
                   </Pressable>
                 )}
 
@@ -306,9 +265,7 @@ export default function MapScreen() {
                     style={[styles.popupBtn, styles.popupBtnPrimary]}
                     onPress={() => openDirections(selectedOpp.address)}
                   >
-                    <Text style={[styles.popupBtnText, { color: "white" }]}>
-                      Directions
-                    </Text>
+                    <Text style={[styles.popupBtnText, { color: "white" }]}>Directions</Text>
                   </Pressable>
                 )}
               </View>
@@ -327,9 +284,7 @@ export default function MapScreen() {
                 onPress={() => setActiveCat(c)}
                 style={[styles.chip, active && styles.chipActive]}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {c}
-                </Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c}</Text>
               </Pressable>
             );
           })}
@@ -352,10 +307,7 @@ export default function MapScreen() {
                     setSelected({ kind: "friend", id: f.id });
                     setActiveFriendId(f.id);
                   }}
-                  style={[
-                    styles.friendRow,
-                    activeFriendId === f.id && styles.friendRowActive,
-                  ]}
+                  style={[styles.friendRow, activeFriendId === f.id && styles.friendRowActive]}
                 >
                   <Image source={{ uri: f.avatar }} style={styles.rowAvatar} />
                   <View style={{ flex: 1 }}>
@@ -372,9 +324,7 @@ export default function MapScreen() {
               ))}
             </View>
 
-            <Text style={[styles.sectionTitle, { marginTop: 14 }]}>
-              Available Opportunities
-            </Text>
+            <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Available Opportunities</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -384,9 +334,7 @@ export default function MapScreen() {
                 <View style={{ flex: 1, paddingRight: 12 }}>
                   <Text style={styles.oppTitle}>{item.title}</Text>
                   <Text style={styles.oppSub}>{item.subtitle}</Text>
-                  <Text style={styles.oppMeta}>
-                    📍 {item.miles} miles · {item.address}
-                  </Text>
+                  <Text style={styles.oppMeta}>📍 {item.miles} miles · {item.address}</Text>
                 </View>
 
                 <View style={[styles.badge, { backgroundColor: pinColor(item.category) }]}>
@@ -413,16 +361,10 @@ function GridOverlay() {
   return (
     <View pointerEvents="none" style={styles.gridWrap}>
       {Array.from({ length: cols }).map((_, i) => (
-        <View
-          key={`v-${i}`}
-          style={[styles.gridLineV, { left: `${(i / (cols - 1)) * 100}%` }]}
-        />
+        <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i / (cols - 1)) * 100}%` }]} />
       ))}
       {Array.from({ length: rows }).map((_, i) => (
-        <View
-          key={`h-${i}`}
-          style={[styles.gridLineH, { top: `${(i / (rows - 1)) * 100}%` }]}
-        />
+        <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i / (rows - 1)) * 100}%` }]} />
       ))}
     </View>
   );
@@ -430,26 +372,14 @@ function GridOverlay() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#F7F4EA" },
-  mapWrap: {
-    height: 360,
-    margin: 16,
-    borderRadius: 24,
-    overflow: "hidden",
-    backgroundColor: "#F7F4EA",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 3,
+
+  /* ✅ Header sits ABOVE the map */
+  headerArea: {
+    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
   },
-  mapTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(247, 244, 234, 0.20)" },
-
-  gridWrap: { ...StyleSheet.absoluteFillObject, opacity: 0.35 },
-  gridLineV: { position: "absolute", top: 0, bottom: 0, width: 2, backgroundColor: "rgba(185, 230, 198, 0.8)" },
-  gridLineH: { position: "absolute", left: 0, right: 0, height: 2, backgroundColor: "rgba(185, 230, 198, 0.8)" },
-
-  topOverlay: { position: "absolute", top: 14, left: 14, right: 14 },
   h1: { fontSize: 34, fontWeight: "900", color: "#0A7A5A" },
-
   searchBar: {
     marginTop: 10,
     flexDirection: "row",
@@ -463,41 +393,76 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 18, opacity: 0.55, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: "#142018" },
+  mapHint: { marginTop: 8, color: "#3F5B50", fontWeight: "700", opacity: 0.85 },
+
+  /* ✅ Map moved DOWN + a little shorter so it feels spaced */
+  mapWrap: {
+    height: 320,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: "#F7F4EA",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+
+  mapTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(247, 244, 234, 0.18)" },
+
+  gridWrap: { ...StyleSheet.absoluteFillObject, opacity: 0.28 },
+  gridLineV: { position: "absolute", top: 0, bottom: 0, width: 2, backgroundColor: "rgba(185, 230, 198, 0.65)" },
+  gridLineH: { position: "absolute", left: 0, right: 0, height: 2, backgroundColor: "rgba(185, 230, 198, 0.65)" },
 
   pin: {
     position: "absolute",
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: -23,
-    marginTop: -23,
+    marginLeft: -22,
+    marginTop: -22,
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 4,
   },
+  pinCompact: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    marginLeft: -19,
+    marginTop: -19,
+  },
   pinIcon: { color: "white", fontWeight: "900" },
 
   friendPin: {
     position: "absolute",
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "white",
     borderWidth: 3,
     borderColor: "#2BB673",
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: -26,
-    marginTop: -26,
+    marginLeft: -25,
+    marginTop: -25,
     shadowColor: "#000",
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 3,
   },
-  friendAvatar: { width: 40, height: 40, borderRadius: 20 },
+  friendPinCompact: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginLeft: -22,
+    marginTop: -22,
+  },
+  friendAvatar: { width: 38, height: 38, borderRadius: 19 },
   friendDot: {
     position: "absolute",
     width: 14,
@@ -514,7 +479,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 18,
     right: 18,
-    top: 70,
+    top: 22,
     backgroundColor: "white",
     borderRadius: 18,
     padding: 14,
@@ -544,7 +509,7 @@ const styles = StyleSheet.create({
   popupBtnPrimary: { backgroundColor: "#0A7A5A", borderColor: "#0A7A5A" },
   popupBtnText: { fontWeight: "900", color: "#0A7A5A" },
 
-  chipsWrap: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 6 },
+  chipsWrap: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 },
   chip: {
     borderWidth: 2,
     borderColor: "#B9E6C6",

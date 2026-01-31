@@ -34,7 +34,7 @@ export default function Signup() {
         <View style={styles.logoCircle}>
           <Text style={styles.logoHeart}>♥</Text>
         </View>
-        <Text style={styles.title}>Do Good</Text>
+        <Text style={styles.title}>Need For Good</Text>
         <Text style={styles.subtitle}>Share your volunteer journey 🌿</Text>
       </View>
 
